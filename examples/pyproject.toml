@@ -1,0 +1,5 @@
+[project]
+name = "agent-runtime-application-example"
+version = "0.0.0"
+requires-python = ">=3.11"
+dependencies = ["coloph-agent-runtime @ https://github.com/golergka/coloph-agent-runtime/releases/download/v0.1.0/coloph_agent_runtime-0.1.0-py3-none-any.whl"]
