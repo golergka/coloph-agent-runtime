@@ -25,13 +25,27 @@ The gateway smoke starts both gateway processes against a local Responses API st
 
 ## Release
 
-1. Keep the version on `0.1.*` and update CHANGELOG.md.
+1. Keep the version on `0.2.*` and update CHANGELOG.md.
 2. Run the checks and review the changes.
 3. Commit and push the tested source to the public main branch.
 4. Wait for CI on that commit.
-5. Create the matching immutable `v0.1.*` tag.
+5. Create the matching immutable `v0.2.*` tag.
 6. Publish the wheel and source distribution in a GitHub release.
 7. Run the artifact smoke against the downloaded public artifacts.
 
 GitHub Releases is the distribution channel. PyPI publication requires separate publisher configuration.
 Never move published tags or replace released files. Never publish credentials or private repository references.
+
+## Kubernetes checks
+
+Unit tests use real local worker processes and a fake Claude CLI. Signature
+parity is checked against the local client. For real Job and exec transport,
+install Docker, kind and kubectl, then run:
+
+```sh
+uv run python scripts/smoke_kubernetes.py
+```
+
+The smoke creates a uniquely named local cluster with its own kubeconfig.
+It builds a worker image, checks invocations and cleanup, then deletes the
+cluster. It uses a fake agent and makes no model calls.

@@ -4,6 +4,7 @@
 
 Run Claude Code from Python with explicit sessions, streamed events, typed results, and process cleanup.
 The core uses only the Python standard library. The optional gateway supports OpenAI-compatible endpoints through LiteLLM.
+The optional [Kubernetes backend](docs/kubernetes.md) runs the same client interface in reusable worker containers.
 
 ## Future agent support
 
@@ -13,11 +14,11 @@ A shared abstraction can be added later. The current API remains Claude-specific
 ## Install
 
 Python 3.11 or later and Claude Code 2.1.215 or later are required.
-Version 0.1.0 supports Linux and macOS. Windows process ownership is not supported.
+Local execution supports Linux and macOS. Windows process ownership is not supported.
 GitHub Releases is the initial distribution channel.
 
 ```sh
-uv add "coloph-agent-runtime @ https://github.com/golergka/coloph-agent-runtime/releases/download/v0.1.0/coloph_agent_runtime-0.1.0-py3-none-any.whl"
+uv add "coloph-agent-runtime @ https://github.com/golergka/coloph-agent-runtime/releases/download/v0.2.0/coloph_agent_runtime-0.2.0-py3-none-any.whl"
 ```
 
 The package includes a skill for coding agents. To install it into a consuming project:
@@ -148,7 +149,7 @@ Mixed-content corrupt records fail without rewriting the file. The repair helper
 ## Optional gateway
 
 ```sh
-uv add "coloph-agent-runtime[gateway] @ https://github.com/golergka/coloph-agent-runtime/releases/download/v0.1.0/coloph_agent_runtime-0.1.0-py3-none-any.whl"
+uv add "coloph-agent-runtime[gateway] @ https://github.com/golergka/coloph-agent-runtime/releases/download/v0.2.0/coloph_agent_runtime-0.2.0-py3-none-any.whl"
 ```
 
 The gateway owns temporary configuration, LiteLLM, and a local response-validation proxy for one call.
@@ -159,4 +160,4 @@ The release tests exercise protocol handling without paid provider calls.
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for checks and releases, and [examples](examples/README.md) for standalone integration code.
-MIT licensed. Release versions remain on `0.1.*`.
+MIT licensed. Release versions remain on `0.2.*`.

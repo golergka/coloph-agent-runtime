@@ -23,3 +23,11 @@ Use `json_schema` to request structured output. Validate the returned value agai
 A successful terminal result proves execution completion, not business-task correctness.
 Transcript repair is opt-in and supports only the default Claude projects directory.
 Keep credentials and private data out of logs and public fixtures.
+
+For Kubernetes execution, install the `kubernetes` extra on the caller.
+Use KubernetesBackend.container(template=...) with a native Pod template.
+The image must run `python -m coloph_agent_runtime.worker` and contain Claude Code.
+Use container.claude() for the same run interface. Paths and inherited environment belong to the container.
+Reuse the container for continuation calls. The caller owns retries and completion checks.
+Keep Kubernetes exec access restricted. Close the container when its caller-owned loop ends.
+Treat RemoteTransportError as an uncertain outcome. Do not automatically replay agent side effects.

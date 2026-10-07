@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "coloph-agent-runtime"
-version = "0.1.0"
+version = "0.2.0"
 description = "Typed headless Claude Code execution with events, sessions, and explicit process ownership."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -14,6 +14,7 @@ dependencies = []
 classifiers = ["Development Status :: 3 - Alpha", "Typing :: Typed", "Programming Language :: Python :: 3"]
 
 [project.optional-dependencies]
+kubernetes = ["kubernetes>=32,<35"]
 gateway = ["httpx>=0.28,<1", "pyyaml>=6,<7", "starlette>=1.0.1,<2", "uvicorn>=0.41,<1", "litellm[proxy]>=1.89,<2"]
 
 [project.urls]
@@ -21,7 +22,7 @@ Repository = "https://github.com/golergka/coloph-agent-runtime"
 Issues = "https://github.com/golergka/coloph-agent-runtime/issues"
 
 [dependency-groups]
-dev = ["pytest>=8,<10", "ruff>=0.11,<1", "mypy>=1.15,<2", "httpx>=0.28,<1", "pyyaml>=6,<7", "types-pyyaml>=6,<7", "starlette>=1.0.1,<2", "uvicorn>=0.41,<1"]
+dev = ["pytest>=8,<10", "ruff>=0.11,<1", "mypy>=1.15,<2", "httpx>=0.28,<1", "pyyaml>=6,<7", "types-pyyaml>=6,<7", "starlette>=1.0.1,<2", "uvicorn>=0.41,<1", "kubernetes>=32,<35"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/coloph_agent_runtime"]
