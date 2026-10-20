@@ -1,6 +1,6 @@
 ---
 name: run-claude-code
-description: Integrate headless Claude Code execution into Python applications with coloph-agent-runtime, including sessions, event storage, credentials, and process cancellation.
+description: Integrate headless Claude Code and Codex execution into Python applications, locally or in Docker and Kubernetes, with sessions, credentials and cancellation.
 ---
 
 # Run Claude Code from Python
@@ -31,3 +31,15 @@ Use container.claude() for the same run interface. Paths and inherited environme
 Reuse the container for continuation calls. The caller owns retries and completion checks.
 Keep Kubernetes exec access restricted. Close the container when its caller-owned loop ends.
 Treat RemoteTransportError as an uncertain outcome. Do not automatically replay agent side effects.
+
+Use CodexClient.run with CodexRunOptions for Codex. The argument names match ClaudeClient.run.
+Codex assigns new session IDs. Use session_id only for resume; do not combine it with resume=False.
+Use CodexCLIAuth for a login already present in the execution environment.
+Use CodexSubscriptionAuth.from_local() to send a local file-based ChatGPT login to a trusted worker.
+This helper updates the source auth file after refresh unless another process changed it.
+Never use the same copied refresh credentials concurrently in independent clients.
+Use from_file(path) and save(path) for explicit credential persistence.
+Use container.codex() for the same Codex run interface in either container backend.
+DockerBackend.container(image=...) uses a prebuilt worker image and defaults to 1 CPU, 1 GiB and 256 PIDs.
+Build images with ordinary Dockerfiles. Keep credentials out of build contexts and image layers.
+Use matching client and worker versions; version 0.3 uses worker protocol 2.

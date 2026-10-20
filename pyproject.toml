@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "coloph-agent-runtime"
-version = "0.2.0"
-description = "Typed headless Claude Code execution with events, sessions, and explicit process ownership."
+version = "0.3.0"
+description = "Typed Claude Code and Codex execution locally, in Docker, and in Kubernetes."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"

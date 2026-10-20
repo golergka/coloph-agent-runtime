@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0
+
+- Add Codex execution with native streamed events, session resume, structured JSON, token usage, deadlines and cancellation.
+- Preserve each agent's local run signature in Docker and Kubernetes workers.
+- Add a Docker CLI backend with explicit CPU, memory and PID limits, attach, logs and deterministic cleanup.
+- Add portable ChatGPT subscription authentication from a local file login, with private refresh transport and guarded writeback.
+- Include a Dockerfile with both CLIs and deterministic container smoke tests. Test real Codex subscription execution and resume locally.
+- Upgrade the worker protocol to version 2. Rebuild worker images when upgrading clients.
+- Keep existing Claude APIs and caller-owned retry policy unchanged.
+
 ## 0.2.0
 
 - Add optional Kubernetes worker containers with native Pod templates and user-built images.

@@ -18,6 +18,8 @@ from typing import Any
 
 from ._remote_protocol import MAX_FRAME_BYTES, PROTOCOL_VERSION, WorkerBusyError, decode_auth, encode_error
 from .client import ClaudeClient
+from .codex import CodexCLIAuth, CodexClient, CodexRunOptions
+from .codex_auth import CodexSubscriptionAuth
 from .types import RunOptions
 
 DEFAULT_SOCKET = "/tmp/coloph-agent-runtime.sock"
@@ -102,8 +104,31 @@ class WorkerHandler(socketserver.StreamRequestHandler):
 
         observer = threading.Thread(target=monitor, daemon=True)
         observer.start()
+        codex_auth: CodexCLIAuth | CodexSubscriptionAuth | None = None
         try:
             options = dict(request["options"])
+            if request.get("agent") == "codex":
+                auth_data = request["auth"]
+                codex_auth = (
+                    CodexSubscriptionAuth(auth_data["subscription"])
+                    if "subscription" in auth_data
+                    else CodexCLIAuth(**auth_data)
+                )
+                codex_result = CodexClient(executable=request["executable"], auth=codex_auth).run(
+                    request["prompt"],
+                    cwd=Path(request["cwd"]),
+                    options=CodexRunOptions(**options),
+                    session_id=request["session_id"],
+                    resume=request["resume"],
+                    env_overrides=request["env_overrides"],
+                    base_env=request["base_env"],
+                    stdin_text=request["stdin_text"],
+                    cancel=cancel,
+                    on_event=lambda event: self.send({"type": "event", "event": event}),
+                )
+                return asdict(codex_result)
+            if request.get("agent", "claude") != "claude":
+                raise ValueError("Unsupported agent")
             options["allowed_tools"] = tuple(options["allowed_tools"])
             options["disallowed_tools"] = tuple(options["disallowed_tools"])
             result = ClaudeClient(executable=request["executable"], auth=decode_auth(request["auth"])).run(
@@ -122,6 +147,8 @@ class WorkerHandler(socketserver.StreamRequestHandler):
         finally:
             finished.set()
             observer.join(timeout=1)
+            if isinstance(codex_auth, CodexSubscriptionAuth):
+                self.send({"type": "credentials", "auth_json": codex_auth._auth_json})
 
 
 def bridge(path: str) -> None:

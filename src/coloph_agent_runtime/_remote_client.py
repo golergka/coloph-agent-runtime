@@ -64,77 +64,102 @@ class RemoteClaudeClient:
             "env_overrides": dict(env_overrides) if env_overrides is not None else None,
             "base_env": dict(base_env) if base_env is not None else None,
         }
-        payload = json.dumps(request) + "\n"
-        if len(payload.encode()) > MAX_FRAME_BYTES:
-            raise ValueError("Request exceeds protocol frame limit")
-        frames: queue.Queue[dict[str, Any] | Exception] = queue.Queue()
-        stop = threading.Event()
-        abort = threading.Event()
+        return ClaudeResult(**exchange(self._connect, request, on_event=on_event, cancel=cancel))
 
-        def communicate() -> None:
-            channel: Channel | None = None
-            try:
-                channel = self._connect()
-                channel.write_stdin(payload)
-                pending = ""
-                last_ping = 0.0
-                cancel_at: float | None = None
-                while not stop.is_set():
-                    now = time.monotonic()
-                    if abort.is_set() or (cancel is not None and cancel.is_set()):
-                        if cancel_at is None:
-                            channel.write_stdin('{"op":"cancel"}\n')
-                            cancel_at = now
-                        elif now - cancel_at > 15:
-                            raise RemoteTransportError("Worker did not acknowledge cancellation; outcome is uncertain")
-                    if now - last_ping > 1:
-                        channel.write_stdin('{"op":"ping"}\n')
-                        last_ping = now
-                    channel.update(timeout=0.1)
-                    pending += channel.read_stdout()
-                    if len(pending.encode()) > MAX_FRAME_BYTES:
-                        raise RemoteTransportError("Worker response exceeds protocol frame limit")
-                    while "\n" in pending:
-                        line, pending = pending.split("\n", 1)
-                        frame = json.loads(line)
-                        if not isinstance(frame, dict) or frame.get("type") not in {"event", "result", "error"}:
-                            raise RemoteTransportError("Invalid worker response")
-                        frames.put(frame)
-                        if frame["type"] in {"result", "error"}:
-                            return
-                    if not channel.is_open():
-                        raise RemoteTransportError(
-                            "Worker stream closed without a terminal result; outcome is uncertain"
-                        )
-            except Exception as exc:
-                # Transport boundary reports errors to the caller thread.
-                frames.put(exc if isinstance(exc, RemoteTransportError) else RemoteTransportError(str(exc)))
-            finally:
-                if channel is not None:
-                    channel.close()
 
-        io = threading.Thread(target=communicate, daemon=True)
-        io.start()
+def exchange(
+    connect: Callable[[], Channel],
+    request: dict[str, Any],
+    *,
+    on_event: EventCallback | None,
+    cancel: threading.Event | None,
+    on_control: Callable[[dict[str, Any]], None] | None = None,
+) -> dict[str, Any]:
+    payload = json.dumps(request) + "\n"
+    if len(payload.encode()) > MAX_FRAME_BYTES:
+        raise ValueError("Request exceeds protocol frame limit")
+    frames: queue.Queue[dict[str, Any] | Exception] = queue.Queue()
+    stop = threading.Event()
+    abort = threading.Event()
+
+    def communicate() -> None:
+        channel: Channel | None = None
         try:
-            while True:
-                frame = frames.get()
-                if isinstance(frame, Exception):
-                    raise frame
-                if frame["type"] == "event":
-                    if on_event is not None:
-                        on_event(frame["event"])
-                elif frame["type"] == "error":
-                    raise decode_error(frame["error"])
-                else:
-                    return ClaudeResult(**frame["result"])
+            channel = connect()
+            channel.write_stdin(payload)
+            pending = ""
+            last_ping = 0.0
+            cancel_at: float | None = None
+            while not stop.is_set():
+                now = time.monotonic()
+                if abort.is_set() or (cancel is not None and cancel.is_set()):
+                    if cancel_at is None:
+                        channel.write_stdin('{"op":"cancel"}\n')
+                        cancel_at = now
+                    elif now - cancel_at > 15:
+                        raise RemoteTransportError("Worker did not acknowledge cancellation; outcome is uncertain")
+                if now - last_ping > 1:
+                    channel.write_stdin('{"op":"ping"}\n')
+                    last_ping = now
+                channel.update(timeout=0.1)
+                pending += channel.read_stdout()
+                if len(pending.encode()) > MAX_FRAME_BYTES:
+                    raise RemoteTransportError("Worker response exceeds protocol frame limit")
+                while "\n" in pending:
+                    line, pending = pending.split("\n", 1)
+                    frame = json.loads(line)
+                    if not isinstance(frame, dict) or frame.get("type") not in {
+                        "event",
+                        "result",
+                        "error",
+                        "credentials",
+                    }:
+                        raise RemoteTransportError("Invalid worker response")
+                    frames.put(frame)
+                    if frame["type"] in {"result", "error"}:
+                        return
+                if not channel.is_open():
+                    raise RemoteTransportError("Worker stream closed without a terminal result; outcome is uncertain")
+        except Exception as exc:
+            # Transport boundary reports errors to the caller thread.
+            frames.put(exc if isinstance(exc, RemoteTransportError) else RemoteTransportError(str(exc)))
         finally:
-            # Callback exceptions and KeyboardInterrupt also cancel the remote process.
-            abort.set()
-            io.join(timeout=16)
-            stop.set()
-            io.join(timeout=2)
-            if io.is_alive():
-                raise RemoteTransportError("Transport did not stop; remote cleanup could not be confirmed")
+            if channel is not None:
+                channel.close()
+
+    io = threading.Thread(target=communicate, daemon=True)
+    io.start()
+    try:
+        while True:
+            frame = frames.get()
+            if isinstance(frame, Exception):
+                raise frame
+            if frame["type"] == "event":
+                if on_event is not None:
+                    on_event(frame["event"])
+            elif frame["type"] == "credentials":
+                if on_control is not None:
+                    on_control(frame)
+            elif frame["type"] == "error":
+                raise decode_error(frame["error"])
+            else:
+                result = frame["result"]
+                if not isinstance(result, dict):
+                    raise RemoteTransportError("Worker result must be an object")
+                return result
+    finally:
+        # Callback exceptions and KeyboardInterrupt also cancel the remote process.
+        abort.set()
+        io.join(timeout=16)
+        stop.set()
+        io.join(timeout=2)
+        if io.is_alive():
+            raise RemoteTransportError("Transport did not stop; remote cleanup could not be confirmed")
+        # A callback can fail before the worker returns a refreshed login cache.
+        while not frames.empty():
+            remaining = frames.get_nowait()
+            if isinstance(remaining, dict) and remaining.get("type") == "credentials" and on_control is not None:
+                on_control(remaining)
 
 
 def hello(connect: Callable[[], Channel]) -> None:

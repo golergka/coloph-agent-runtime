@@ -10,7 +10,7 @@ from uuid import uuid4
 
 from kubernetes import client
 
-from coloph_agent_runtime import RunOptions
+from coloph_agent_runtime import CodexRunOptions, RunOptions
 from coloph_agent_runtime.kubernetes import KubernetesBackend
 from coloph_agent_runtime.runner import ClaudeCancelledError
 
@@ -68,7 +68,11 @@ def main() -> None:
             backend = KubernetesBackend(namespace="default", kubeconfig=str(kubeconfig))
             with backend._api() as api:
                 client.CoreV1Api(api).create_namespaced_config_map(
-                    "default", {"metadata": {"name": "fake-cli"}, "data": {"claude": FAKE}}
+                    "default",
+                    {
+                        "metadata": {"name": "fake-cli"},
+                        "data": {"claude": FAKE, "codex": (ROOT / "tests/fixtures/fake_codex.py").read_text()},
+                    },
                 )
             template = {
                 "spec": {
@@ -110,6 +114,16 @@ def main() -> None:
                 assert runner.run("ok", cwd=Path("/home/agent"), options=options).response_text == "done"
                 pipes = runner.run("pipes", cwd=Path("/home/agent"), options=options, stdin_text="a" * 200000)
                 assert len(pipes.stderr) == 200000
+                codex = container.codex(executable="/cli/codex")
+                codex_options = CodexRunOptions(timeout_seconds=30)
+                codex_result = codex.run("ok", cwd=Path("/home/agent"), options=codex_options)
+                assert codex_result.response_text == "done"
+                assert (
+                    codex.run(
+                        "ok", cwd=Path("/home/agent"), options=codex_options, session_id=codex_result.session_id
+                    ).session_id
+                    == codex_result.session_id
+                )
             assert container.status().phase == "removed"
             container.close()
             print("Kubernetes smoke passed", flush=True)

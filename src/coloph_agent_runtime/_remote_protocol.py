@@ -9,10 +9,11 @@ from typing import Any
 
 from . import errors
 from .auth import AnthropicAuth, Auth, CLIAuth, OAuthAuth, OpenAIAuth
+from .codex import CodexCancelledError, CodexInvocationError, CodexProtocolError
 from .runner import ClaudeCancelledError, ClaudeProtocolError, ClaudeResultError
 from .version import ClaudeCodeVersionError
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 MAX_FRAME_BYTES = 32 * 1024 * 1024
 
 
@@ -41,6 +42,8 @@ def decode_auth(value: dict[str, Any]) -> Auth:
 
 def encode_error(exc: Exception) -> dict[str, Any]:
     data: dict[str, Any] = {"type": type(exc).__name__, "message": str(exc)}
+    if isinstance(exc, CodexInvocationError):
+        data.update(stderr=exc.stderr, events=exc.events, returncode=exc.returncode)
     if isinstance(exc, errors.ClaudeInvocationError):
         data.update(
             returncode=exc.returncode,
@@ -63,6 +66,11 @@ def encode_error(exc: Exception) -> dict[str, Any]:
 
 def decode_error(data: dict[str, Any]) -> Exception:
     kind = data["type"]
+    if kind in {"CodexInvocationError", "CodexProtocolError"}:
+        constructor = CodexProtocolError if kind == "CodexProtocolError" else CodexInvocationError
+        return constructor(data["message"], stderr=data["stderr"], events=data["events"], returncode=data["returncode"])
+    if kind == "CodexCancelledError":
+        return CodexCancelledError(data["message"])
     if kind == "ClaudeResultError":
         return ClaudeResultError(data["cmd"], event=data["event"], stderr=data["stderr"])
     invocation_types = {

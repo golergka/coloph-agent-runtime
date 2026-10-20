@@ -7,6 +7,15 @@ import pytest
 
 
 @pytest.fixture
+def fake_codex(tmp_path: Path) -> Path:
+    path = tmp_path / "codex"
+    source = (Path(__file__).parent / "fixtures/fake_codex.py").read_text().split("\n", 1)[1]
+    path.write_text(f"#!{sys.executable}\n" + source)
+    path.chmod(0o755)
+    return path
+
+
+@pytest.fixture
 def fake_claude(tmp_path: Path) -> Path:
     """A real child process that emits CLI-shaped events without an account."""
     path = tmp_path / "claude"

@@ -2,6 +2,9 @@
 
 Status: accepted design for the 0.2 release series.
 
+This record describes the original extraction. The [0.3 design](codex-design.md)
+extends it with Codex and Docker support.
+
 ## Ownership
 
 The caller creates one worker container and sends one or more agent invocations.

@@ -8,7 +8,8 @@ import tempfile
 from importlib.resources import files
 from pathlib import Path
 
-from coloph_agent_runtime import ClaudeClient, JsonlRecorder, RunOptions
+from coloph_agent_runtime import ClaudeClient, CodexClient, CodexRunOptions, JsonlRecorder, RunOptions
+from coloph_agent_runtime.docker import DockerBackend
 
 
 def main() -> None:
@@ -52,6 +53,19 @@ def main() -> None:
         )
         assert continued.session_id == result.session_id
         assert continued.response_text == "complete"
+        codex = cwd / "fake-codex"
+        codex.write_text(
+            f"#!{sys.executable}\n"
+            "import json, sys\n"
+            "sys.stdin.read()\n"
+            "print(json.dumps({'type': 'thread.started', 'thread_id': 'example-thread'}))\n"
+            "print(json.dumps({'type': 'item.completed', 'item': {'type': 'agent_message', 'text': 'complete'}}))\n"
+            "print(json.dumps({'type': 'turn.completed', 'usage': {'input_tokens': 1, 'output_tokens': 1}}))\n"
+        )
+        codex.chmod(0o755)
+        codex_result = CodexClient(executable=str(codex)).run("Do the work", cwd=cwd, options=CodexRunOptions())
+        assert codex_result.response_text == "complete" and codex_result.input_tokens == 1
+        assert DockerBackend().command == ["docker"]
         print("Application boundary smoke passed")
 
 

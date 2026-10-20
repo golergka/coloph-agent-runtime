@@ -15,8 +15,11 @@ from kubernetes.client.exceptions import ApiException  # type: ignore[import-unt
 from kubernetes.stream import stream  # type: ignore[import-untyped]
 
 from ._remote_client import Channel, RemoteClaudeClient, hello
+from ._remote_codex import RemoteCodexClient
 from ._remote_protocol import RemoteExecutionError, RemoteTransportError, WorkerBusyError
 from .auth import Auth
+from .codex import CodexCLIAuth
+from .codex_auth import CodexSubscriptionAuth
 
 __all__ = [
     "KubernetesBackend",
@@ -280,6 +283,11 @@ class Container:
 
     def claude(self, *, executable: str = "claude", auth: Auth | None = None) -> RemoteClaudeClient:
         return RemoteClaudeClient(self._connect, executable=executable, auth=auth)
+
+    def codex(
+        self, *, executable: str = "codex", auth: CodexCLIAuth | CodexSubscriptionAuth | None = None
+    ) -> RemoteCodexClient:
+        return RemoteCodexClient(self._connect, executable=executable, auth=auth)
 
     def logs(self, *, tail_lines: int = 200) -> str:
         if tail_lines < 1:

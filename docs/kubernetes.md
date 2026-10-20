@@ -4,7 +4,7 @@ Install the client with the `kubernetes` extra. Use the wheel URL from the
 matching GitHub release; the package is not published to PyPI.
 
 ```sh
-uv add "coloph-agent-runtime[kubernetes] @ https://github.com/golergka/coloph-agent-runtime/releases/download/v0.2.0/coloph_agent_runtime-0.2.0-py3-none-any.whl"
+uv add "coloph-agent-runtime[kubernetes] @ https://github.com/golergka/coloph-agent-runtime/releases/download/v0.3.0/coloph_agent_runtime-0.3.0-py3-none-any.whl"
 ```
 
 ## Prepare an image
@@ -21,14 +21,14 @@ The worker uses Python's standard library. It does not need the Kubernetes
 extra. For OpenAIAuth, install the `gateway` extra in the worker image.
 The caller and image must support the same worker protocol version.
 
-The library does not build or publish images. Docker is an image build tool
-here; this release does not provide a Docker execution backend.
+The library does not build or publish images. For local containers and a
+Dockerfile with both CLIs, see the [Codex and Docker guide](codex.md).
 
 The repository includes an [example Dockerfile](../examples/kubernetes/Dockerfile).
 After `uv build`, build it from the repository root:
 
 ```sh
-docker build -f examples/kubernetes/Dockerfile -t example/review-worker:0.2.0 .
+docker build -f examples/kubernetes/Dockerfile -t example/review-worker:0.3.0 .
 ```
 
 ## Start a container
@@ -73,7 +73,7 @@ spec:
   automountServiceAccountToken: false
   containers:
     - name: agent
-      image: example/review-worker:0.2.0
+      image: example/review-worker:0.3.0
       resources:
         requests: {cpu: 250m, memory: 512Mi}
         limits: {cpu: "2", memory: 4Gi}
@@ -179,5 +179,8 @@ use capture_events=False and stream events to caller-owned storage.
 Session files survive calls in one container. Resuming in another container
 requires persistent session files and the same workspace paths.
 
-Codex support remains future work. See the [design](kubernetes-design.md) for
-ownership boundaries and application adoption considerations.
+Use container.codex() for Codex execution with the same interface as the local
+CodexClient. The image must include Codex. See the [Codex guide](codex.md) for
+subscription authentication and options. Version 0.3 requires worker protocol
+2; rebuild worker images when upgrading the client.
+See the [design](kubernetes-design.md) for ownership and application adoption.

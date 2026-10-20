@@ -16,7 +16,7 @@ import pytest
 
 from coloph_agent_runtime import ClaudeClient, OAuthAuth, RunOptions
 from coloph_agent_runtime._remote_client import RemoteClaudeClient, hello
-from coloph_agent_runtime._remote_protocol import WorkerBusyError
+from coloph_agent_runtime._remote_protocol import PROTOCOL_VERSION, WorkerBusyError
 from coloph_agent_runtime.errors import ClaudeUsageLimitError
 from coloph_agent_runtime.runner import ClaudeCancelledError, ClaudeProtocolError, ClaudeResultError
 
@@ -58,7 +58,10 @@ def worker(tmp_path):
 
     with tempfile.TemporaryDirectory(prefix="car-") as directory:
         path = str(Path(directory) / "s")
-        proc = subprocess.Popen([sys.executable, "-m", "coloph_agent_runtime.worker", "--socket", path])
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "coloph_agent_runtime.worker", "--socket", path],
+            env={**os.environ, "HOME": str(tmp_path)},
+        )
         try:
             deadline = time.monotonic() + 5
             while not Path(path).exists():
@@ -174,7 +177,7 @@ def test_disconnect_reaps_agent(worker, fake_claude, tmp_path):
     channel.write_stdin(
         json.dumps(
             {
-                "version": 1,
+                "version": PROTOCOL_VERSION,
                 "op": "run",
                 "prompt": "sleep",
                 "cwd": str(tmp_path),

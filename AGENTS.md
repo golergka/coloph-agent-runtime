@@ -1,12 +1,14 @@
 # Project instructions
 
-Keep releases on `0.2.*` until the user changes this constraint.
+The next release is `0.3.0`, including Codex and bounded local Docker execution.
 The package owns one Claude Code subprocess attempt and optional gateway processes.
 It also owns optional Kubernetes worker containers. Follow docs/kubernetes-design.md.
 Keep local and remote ClaudeClient.run signatures identical.
 Applications own authorization, provider selection, accounting, retries, and audit persistence.
 Keep `session_id` and `resume` as separate keyword parameters.
-Codex and other agents are future features. Do not add a shared agent abstraction until requested.
+Keep Claude and Codex APIs similar without pretending their CLI options are identical.
+Keep local and remote CodexClient.run signatures identical.
+Run local Docker tests sequentially, with explicit CPU, memory and PID limits.
 Do not import application modules or add application identity fields to results.
 Keep credentials out of representations and public fixtures.
 Never publish private repository references.

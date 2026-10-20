@@ -64,6 +64,7 @@ def run_process(
     capture_events: bool,
     cancel: threading.Event | None,
     gateway_diagnostics_path: Path | None = None,
+    event_adapter: Callable[[Event], Event] | None = None,
 ) -> ClaudeResult:
     if cancel is not None and cancel.is_set():
         raise ClaudeCancelledError("Claude Code invocation was cancelled before launch")
@@ -174,6 +175,8 @@ def run_process(
                 events.append(event)
             if on_event is not None:
                 on_event(event)
+            if event_adapter is not None:
+                event = event_adapter(event)
             if event.get("type") == "assistant":
                 message = event.get("message") or {}
                 if isinstance(message, dict) and message.get("model") == "<synthetic>":

@@ -13,6 +13,7 @@ uv run python scripts/smoke_artifacts.py
 ```
 
 Tests run real local subprocesses with a fake CLI. No account, database, server, or paid model call is required.
+They cover both Claude and Codex, including local/remote signature parity.
 Gateway contract tests use an in-process HTTP client. Optional gateway startup tests require the `gateway` extra.
 Artifact smoke installs each distribution in a clean environment outside the checkout and runs a standalone example.
 
@@ -25,11 +26,11 @@ The gateway smoke starts both gateway processes against a local Responses API st
 
 ## Release
 
-1. Keep the version on `0.2.*` and update CHANGELOG.md.
+1. Keep the version on `0.3.*` and update CHANGELOG.md.
 2. Run the checks and review the changes.
 3. Commit and push the tested source to the public main branch.
 4. Wait for CI on that commit.
-5. Create the matching immutable `v0.2.*` tag.
+5. Create the matching immutable `v0.3.*` tag.
 6. Publish the wheel and source distribution in a GitHub release.
 7. Run the artifact smoke against the downloaded public artifacts.
 
@@ -49,3 +50,17 @@ uv run python scripts/smoke_kubernetes.py
 The smoke creates a uniquely named local cluster with its own kubeconfig.
 It builds a worker image, checks invocations and cleanup, then deletes the
 cluster. It uses a fake agent and makes no model calls.
+
+## Docker checks
+
+Run these sequentially. Each test worker is capped at one CPU, 1 GiB memory,
+and 256 PIDs. This smoke does not create a Kubernetes cluster.
+
+```sh
+docker build -f examples/docker/Dockerfile -t coloph-agent-runtime:0.3.0-test .
+uv run --no-sync python scripts/smoke_docker.py
+```
+
+Add `--live` only to verify real Codex calls using your saved ChatGPT login.
+This consumes subscription usage and can update the saved login after refresh.
+CI runs the deterministic smoke without credentials.
