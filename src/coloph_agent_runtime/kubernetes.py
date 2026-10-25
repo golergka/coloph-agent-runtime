@@ -362,10 +362,10 @@ class _ExecChannel:
     def update(self, timeout: float) -> None:
         self.channel.update(timeout=timeout)
         # Diagnostic stderr is deliberately not mixed into agent event frames.
-        self.channel.read_stderr()
+        self.channel.read_stderr(timeout=0)
 
     def read_stdout(self) -> str:
-        return str(self.channel.read_stdout())
+        return str(self.channel.read_stdout(timeout=0))
 
     def is_open(self) -> bool:
         return bool(self.channel.is_open())

@@ -5,8 +5,9 @@ from unittest.mock import MagicMock
 import pytest
 from kubernetes import client
 from kubernetes.client.exceptions import ApiException
+from kubernetes.stream.ws_client import STDERR_CHANNEL, STDOUT_CHANNEL, WSClient
 
-from coloph_agent_runtime.kubernetes import Container, ContainerError, KubernetesBackend, _job
+from coloph_agent_runtime.kubernetes import Container, ContainerError, KubernetesBackend, _ExecChannel, _job
 
 
 def template():
@@ -104,3 +105,33 @@ def test_replaced_or_duplicate_pod_is_not_used(monkeypatch):
     core.list_namespaced_pod.return_value.items = [pod, pod]
     with pytest.raises(ContainerError, match="multiple Pods"):
         container.status()
+
+
+@pytest.mark.parametrize("stdout", ["", '{"type":"event"}\n'])
+@pytest.mark.parametrize("stderr", ["", "diagnostic\n"])
+def test_exec_polling_never_blocks_on_empty_channel_buffers(monkeypatch, stdout, stderr):
+    # Use the real WSClient reads: their default timeout=None polls indefinitely
+    # when a buffer is empty, starving the caller's heartbeat/cancellation loop.
+    websocket = object.__new__(WSClient)
+    websocket._channels = {}
+    if stdout:
+        websocket._channels[STDOUT_CHANNEL] = stdout
+    if stderr:
+        websocket._channels[STDERR_CHANNEL] = stderr
+    timeouts = []
+
+    def update(timeout=0):
+        timeouts.append(timeout)
+        assert timeout is not None, "Empty exec buffers must never trigger an unbounded poll"
+        assert 0 <= timeout <= 0.1
+
+    monkeypatch.setattr(websocket, "update", update)
+    channel = _ExecChannel(websocket, MagicMock())
+    captured = []
+    for _ in range(3):
+        channel.update(timeout=0.1)
+        captured.append(channel.read_stdout())
+    assert captured == [stdout, "", ""]
+    assert timeouts.count(0.1) == 3
+    assert timeouts.count(0) >= 4
+    assert websocket._channels == {}
