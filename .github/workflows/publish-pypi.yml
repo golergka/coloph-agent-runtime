@@ -1,0 +1,23 @@
+name: Publish existing 0.3.0 release to PyPI
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download immutable release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v0.3.0 --repo golergka/coloph-agent-runtime --dir dist
+          cd dist
+          echo 'b1dd472b6187f3888527b202b909f0d00f52edb8480d9986eb70164ea5b45654  coloph_agent_runtime-0.3.0-py3-none-any.whl' | sha256sum -c
+          echo 'e33854bf6f75f6a68b1fbb309894d3e570342c07ae476f1fc0c97d379f7e68a7  coloph_agent_runtime-0.3.0.tar.gz' | sha256sum -c
+      - uses: pypa/gh-action-pypi-publish@release/v1
